@@ -18,8 +18,23 @@ public class SyslogSimulatorService {
 
 	public void writeSyslogMessagesToDB(Map<String, String> properties, File syslogFile) throws Exception {
 
-		SyslogHibernateUtil.setSessionFactory(properties);
-		Session session = SyslogHibernateUtil.getSession();
+		int retryCount = 0;
+		boolean isConnected = false;
+		Session session = null;
+		while (!isConnected && retryCount < 5) {
+			try {
+				SyslogHibernateUtil.setSessionFactory(properties);
+				session = SyslogHibernateUtil.getSession();
+				isConnected = true;
+			} catch (Exception exe) {
+				if(retryCount >= 5) {
+					throw new Exception("Uable to connect to mysql database even after retries. Exiting", exe);
+				}
+				retryCount++;
+				System.out.println("Unable to connect to mysql for the retry count" + retryCount + "");
+				Thread.sleep(5000);
+			}
+		}
 		
 		long interval = Long.parseLong(properties.get("syslog.event.write.interval"));
 		int messagesCount = Integer.parseInt(properties.get("syslog.event.write.message.count"));
